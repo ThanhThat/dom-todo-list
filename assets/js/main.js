@@ -3,13 +3,9 @@ const $$ = document.querySelectorAll.bind(document);
 
 const inputTodo = $(".input-todo");
 const todoList = $(".todo-list");
-const todoItemTmp = $("#todoItemTmp");
+const todoItemTmp = $("#todoItemTmp"); // get todo Template
 
-let todoDb = [
-  { id: 1, content: "Learn js", complete: false },
-  { id: 2, content: "Learn PHP", complete: false },
-  { id: 3, content: "Learn Python", complete: false },
-];
+let todoDb = JSON.parse(localStorage.getItem("todoDb")) || [];
 
 inputTodo.focus();
 
@@ -26,13 +22,17 @@ function addTodoUI(todo) {
   todoItemClone.dataset.complete = todo.complete;
 
   if (todo.complete === true) {
-    todoItemClone.classList.add("text-decoration-line-through ");
+    todoItemClone.classList.add("text-decoration-line-through");
   }
 
   const btnDelete = todoItemClone.querySelector(".btn-delete");
   btnDelete.dataset.id = todo.id;
 
   todoList.appendChild(todoItemClone);
+}
+
+function save() {
+  localStorage.setItem("todoDb", JSON.stringify(todoDb));
 }
 
 renderTodo(todoDb);
@@ -52,6 +52,9 @@ $("#form-create-todo").addEventListener("submit", (e) => {
   addTodoUI(todoItem);
 
   inputTodo.value = "";
+
+  // save into localStorage
+  save();
 });
 
 // delete all
@@ -60,6 +63,7 @@ $(".delete-all").addEventListener("click", () => {
   if (isDeleteAll) {
     todoList.innerHTML = "";
     todoDb = [];
+    save();
   }
 });
 
@@ -71,15 +75,14 @@ todoList.addEventListener("click", (e) => {
   if (btnDelete) {
     const btnId = btnDelete.dataset.id;
     const todoItemElem = $(`li[data-id="${btnId}"]`);
-    todoItemElem.outerHTML = "";
-
     const indexDelete = todoDb.findIndex((todo) => {
       return todo.id === Number(btnId);
     });
 
-    todoDb = todoDb
-      .splice(0, indexDelete)
-      .concat(todoDb.slice(indexDelete + 1));
+    todoDb = todoDb.slice(0, indexDelete).concat(todoDb.slice(indexDelete + 1));
+
+    todoItemElem.outerHTML = "";
+    save();
   }
 
   // completed
@@ -107,6 +110,7 @@ todoList.addEventListener("click", (e) => {
       todoDb[todoIndex].complete = false;
     }
   }
+  save();
 });
 
 // filter todo item
