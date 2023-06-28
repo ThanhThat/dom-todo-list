@@ -5,14 +5,22 @@ const inputTodo = $(".input-todo");
 const todoList = $(".todo-list");
 const todoItemTmp = $("#todoItemTmp"); // get todo Template
 
-let todoDb = JSON.parse(localStorage.getItem("todoDb")) || [];
-
 inputTodo.focus();
 
-function renderTodo(todoDb) {
-  todoDb.forEach((todo) => {
-    addTodoUI(todo);
-  });
+async function getTodoList() {
+  const res = await fetch("http://localhost:3000/todoList");
+  const data = await res.json();
+  return data;
+}
+
+async function renderTodo(e) {
+  let todoDb = await getTodoList();
+
+  todoDb
+    .filter((todo) => todo.deleted !== true)
+    .forEach((todo) => {
+      addTodoUI(todo);
+    });
 }
 
 function addTodoUI(todo) {
@@ -31,64 +39,88 @@ function addTodoUI(todo) {
   todoList.appendChild(todoItemClone);
 }
 
-function save() {
-  localStorage.setItem("todoDb", JSON.stringify(todoDb));
-}
-
-renderTodo(todoDb);
+renderTodo();
 
 // add todo
 $("#form-create-todo").addEventListener("submit", (e) => {
   e.preventDefault();
+  e.stopPropagation();
 
-  const todoItem = {
-    id: Date.now(),
-    content: inputTodo.value,
-    complete: false,
-  };
+  const inputValue = inputTodo.value.trim();
 
-  todoDb.push(todoItem);
+  if (inputValue) {
+    const todoItem = {
+      id: Date.now(),
+      content: inputValue,
+      complete: false,
+    };
 
-  addTodoUI(todoItem);
+    fetch("http://localhost:3000/todoList", {
+      method: "POST", // sending
+      headers: {
+        // Type data sending
+        "Content-Type": "application/json; charset=UTF-8",
+      },
+      body: JSON.stringify(todoItem),
+    });
 
-  inputTodo.value = "";
+    addTodoUI(todoItem);
 
-  // save into localStorage
-  save();
+    inputTodo.value = "";
+  }
+
+  e.returnValue = false; // or return false;
 });
 
 // delete all
-$(".delete-all").addEventListener("click", () => {
+$(".delete-all").addEventListener("click", async () => {
+  let todoDb = await getTodoList();
+
   const isDeleteAll = confirm("Bạn có muốn xóa hết!");
   if (isDeleteAll) {
     todoList.innerHTML = "";
-    todoDb = [];
-    save();
+    todoDb
+      .filter((todo) => todo.deleted !== true)
+      .forEach((todo) => {
+        fetch(`http://localhost:3000/todoList/${todo.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ deleted: true }),
+          headers: {
+            "Content-Type": "application/json; charset=UTF-8",
+          },
+        });
+      });
   }
 });
 
-todoList.addEventListener("click", (e) => {
+todoList.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   // delete one
   const btnDelete = e.target.closest(".btn-delete");
   const liElm = e.target.closest(".todo-item");
+  let todoDb = await getTodoList();
 
   if (btnDelete) {
     const btnId = btnDelete.dataset.id;
     const todoItemElem = $(`li[data-id="${btnId}"]`);
-    const indexDelete = todoDb.findIndex((todo) => {
-      return todo.id === Number(btnId);
+
+    fetch(`http://localhost:3000/todoList/${btnId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        deleted: true,
+      }),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+      },
     });
 
-    todoDb = todoDb.slice(0, indexDelete).concat(todoDb.slice(indexDelete + 1));
-
     todoItemElem.outerHTML = "";
-    save();
   }
 
   // completed
   else if (liElm) {
-    // e.stopPropagation();
-    // console.log(liElm.dataset.complete);
+    const todoId = liElm.dataset.id;
 
     if (liElm.dataset.complete === "false") {
       liElm.dataset.complete = true;
@@ -98,7 +130,15 @@ todoList.addEventListener("click", (e) => {
         return todo.id == liElm.dataset.id;
       });
 
-      todoDb[todoIndex].complete = true;
+      fetch(`http://localhost:3000/todoList/${todoId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          complete: true,
+        }),
+        headers: {
+          "Content-type": "application/json; charset=UTF-8",
+        },
+      });
     } else {
       liElm.dataset.complete = false;
       liElm.classList.remove("text-decoration-line-through");
@@ -107,27 +147,40 @@ todoList.addEventListener("click", (e) => {
         return todo.id == liElm.dataset.id;
       });
 
-      todoDb[todoIndex].complete = false;
+      fetch(`http://localhost:3000/todoList/${todoId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          complete: false,
+        }),
+        headers: {
+          "Content-type": "application/json; charset=UTF-8",
+        },
+      });
     }
   }
-  save();
+
+  return false;
 });
 
 // filter todo item
 const searchTodo = $("#searchTodo");
 const todoItemList = $$(".todo-item");
 
-searchTodo.addEventListener("input", () => {
-  todoDb.forEach((todo) => {
-    const todoItemElm = $(`li[data-id='${todo.id}']`);
-    const todoContent = todo.content.toLowerCase();
-    if (!todoContent.includes(searchTodo.value.toLowerCase())) {
-      console.log(todoItemElm);
-      todoItemElm.classList.remove("d-block");
-      todoItemElm.classList.add("d-none");
-    } else {
-      todoItemElm.classList.remove("d-none");
-      todoItemElm.classList.add("d-block");
-    }
-  });
+searchTodo.addEventListener("input", async () => {
+  let todoDb = await getTodoList();
+
+  todoDb
+    .filter((todo) => todo.deleted !== true)
+    .forEach((todo) => {
+      const todoItemElm = $(`li[data-id='${todo.id}']`);
+      const todoContent = todo.content.toLowerCase();
+      if (!todoContent.includes(searchTodo.value.toLowerCase())) {
+        console.log(todoItemElm);
+        todoItemElm.classList.remove("d-block");
+        todoItemElm.classList.add("d-none");
+      } else {
+        todoItemElm.classList.remove("d-none");
+        todoItemElm.classList.add("d-block");
+      }
+    });
 });
