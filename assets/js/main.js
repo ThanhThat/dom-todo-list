@@ -4,13 +4,18 @@ const $$ = document.querySelectorAll.bind(document);
 const inputTodo = $(".input-todo");
 const todoList = $(".todo-list");
 const todoItemTmp = $("#todoItemTmp"); // get todo Template
+const API = "https://todo-list-json-server-zal6.vercel.app/todolist/";
 
 inputTodo.focus();
 
 async function getTodoList() {
-  const res = await fetch("http://localhost:3000/todoList");
-  const data = await res.json();
-  return data;
+  try {
+    const res = await fetch(API);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.log("There was an error", err);
+  }
 }
 
 async function renderTodo(e) {
@@ -27,9 +32,9 @@ function addTodoUI(todo) {
   const todoItemClone = todoItemTmp.content.firstElementChild.cloneNode(true);
   todoItemClone.firstChild.textContent = todo.content;
   todoItemClone.dataset.id = todo.id;
-  todoItemClone.dataset.complete = todo.complete;
+  todoItemClone.dataset.completed = todo.completed;
 
-  if (todo.complete === true) {
+  if (todo.completed === true) {
     todoItemClone.classList.add("text-decoration-line-through");
   }
 
@@ -52,17 +57,21 @@ $("#form-create-todo").addEventListener("submit", (e) => {
     const todoItem = {
       id: Date.now(),
       content: inputValue,
-      complete: false,
+      completed: false,
+      deleted: false,
     };
 
-    fetch("http://localhost:3000/todoList", {
+    fetch(API, {
       method: "POST", // sending
       headers: {
         // Type data sending
         "Content-Type": "application/json; charset=UTF-8",
       },
       body: JSON.stringify(todoItem),
-    });
+    })
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((err) => console.log(err));
 
     addTodoUI(todoItem);
 
@@ -82,20 +91,21 @@ $(".delete-all").addEventListener("click", async () => {
     todoDb
       .filter((todo) => todo.deleted !== true)
       .forEach((todo) => {
-        fetch(`http://localhost:3000/todoList/${todo.id}`, {
+        fetch(API + todo.id, {
           method: "PATCH",
           body: JSON.stringify({ deleted: true }),
           headers: {
             "Content-Type": "application/json; charset=UTF-8",
           },
-        });
+        })
+          .then((res) => res.json())
+          .then((data) => console.log(data))
+          .catch((err) => console.log(err));
       });
   }
 });
 
 todoList.addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
   // delete one
   const btnDelete = e.target.closest(".btn-delete");
   const liElm = e.target.closest(".todo-item");
@@ -105,7 +115,7 @@ todoList.addEventListener("click", async (e) => {
     const btnId = btnDelete.dataset.id;
     const todoItemElem = $(`li[data-id="${btnId}"]`);
 
-    fetch(`http://localhost:3000/todoList/${btnId}`, {
+    fetch(API + btnId, {
       method: "PATCH",
       body: JSON.stringify({
         deleted: true,
@@ -113,7 +123,10 @@ todoList.addEventListener("click", async (e) => {
       headers: {
         "Content-type": "application/json; charset=UTF-8",
       },
-    });
+    })
+      .then((res) => res.json())
+      .then((data) => console.log(data))
+      .catch((err) => console.log(err));
 
     todoItemElem.outerHTML = "";
   }
@@ -122,44 +135,48 @@ todoList.addEventListener("click", async (e) => {
   else if (liElm) {
     const todoId = liElm.dataset.id;
 
-    if (liElm.dataset.complete === "false") {
-      liElm.dataset.complete = true;
+    if (liElm.dataset.completed === "false") {
+      liElm.dataset.completed = true;
       liElm.classList.add("text-decoration-line-through");
 
       const todoIndex = todoDb.findIndex((todo) => {
         return todo.id == liElm.dataset.id;
       });
 
-      fetch(`http://localhost:3000/todoList/${todoId}`, {
+      fetch(API + todoId, {
         method: "PATCH",
         body: JSON.stringify({
-          complete: true,
+          completed: true,
         }),
         headers: {
           "Content-type": "application/json; charset=UTF-8",
         },
-      });
+      })
+        .then((res) => res.json())
+        .then((data) => console.log(data))
+        .catch((error) => console.log(error));
     } else {
-      liElm.dataset.complete = false;
+      liElm.dataset.completed = false;
       liElm.classList.remove("text-decoration-line-through");
 
       const todoIndex = todoDb.findIndex((todo) => {
-        return todo.id == liElm.dataset.id;
+        return todo.id === +liElm.dataset.id;
       });
 
-      fetch(`http://localhost:3000/todoList/${todoId}`, {
+      fetch(API + todoId, {
         method: "PATCH",
         body: JSON.stringify({
-          complete: false,
+          completed: false,
         }),
         headers: {
           "Content-type": "application/json; charset=UTF-8",
         },
-      });
+      })
+        .then((res) => res.json())
+        .then((data) => console.log(data))
+        .catch((error) => console.log(error));
     }
   }
-
-  return false;
 });
 
 // filter todo item
