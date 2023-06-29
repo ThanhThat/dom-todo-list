@@ -1,13 +1,14 @@
+const API = "https://todo-list-json-server-zal6.vercel.app/todolist/";
 const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
 
 const inputTodo = $(".input-todo");
 const todoList = $(".todo-list");
 const todoItemTmp = $("#todoItemTmp"); // get todo Template
-const API = "https://todo-list-json-server-zal6.vercel.app/todolist/";
 
 inputTodo.focus();
 
+// GET: get all Todo List
 async function getTodoList() {
   try {
     const res = await fetch(API);
@@ -18,6 +19,7 @@ async function getTodoList() {
   }
 }
 
+// Render todo list into UI
 async function renderTodo(e) {
   let todoDb = await getTodoList();
 
@@ -28,6 +30,7 @@ async function renderTodo(e) {
     });
 }
 
+// Render todo Item
 function addTodoUI(todo) {
   const todoItemClone = todoItemTmp.content.firstElementChild.cloneNode(true);
   todoItemClone.firstChild.textContent = todo.content;
@@ -44,6 +47,7 @@ function addTodoUI(todo) {
   todoList.appendChild(todoItemClone);
 }
 
+// Call method render
 renderTodo();
 
 // add todo
